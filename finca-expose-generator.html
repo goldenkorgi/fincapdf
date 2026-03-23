@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finca Exposé Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Jost:wght@300;400;500&display=swap');
+  :root{--terra:#c8a882;--deep:#2c2416;--olive:#7a8c6e;--stone:#9b9082;--light:#faf8f4;--sand:#f5f0e8;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Jost',sans-serif;background:var(--light);color:var(--deep);min-height:100vh;}
+  header{background:var(--deep);padding:22px 48px;display:flex;align-items:center;gap:16px;}
+  .logo{width:34px;height:34px;border:1.5px solid var(--terra);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;color:var(--terra);font-size:17px;font-style:italic;}
+  header h1{font-family:'Cormorant Garamond',serif;color:#fff;font-size:21px;font-weight:300;letter-spacing:.08em;}
+  header .sub{color:var(--stone);font-size:10px;letter-spacing:.2em;text-transform:uppercase;margin-top:2px;}
+  .main{max-width:960px;margin:0 auto;padding:40px 32px;}
+  .card{background:#fff;border:1px solid #e8e2d9;padding:32px;margin-bottom:20px;}
+  .lbl{font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:var(--stone);margin-bottom:12px;}
+  .prop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:16px;}
+  .prop-card{border:1.5px solid #e0d9cf;padding:0;cursor:pointer;transition:all .2s;background:var(--light);overflow:hidden;}
+  .prop-card:hover{border-color:var(--terra);}
+  .prop-card.active{border-color:var(--terra);box-shadow:0 0 0 2px rgba(200,168,130,.25);}
+  .pc-thumb{width:100%;height:100px;object-fit:cover;display:block;background:var(--sand);}
+  .pc-info{padding:10px 12px;}
+  .pc-name{font-family:'Cormorant Garamond',serif;font-size:14px;font-weight:400;}
+  .pc-loc{font-size:10px;color:var(--stone);letter-spacing:.05em;margin-top:2px;}
+  .url-note{font-size:12px;color:var(--stone);margin-top:12px;padding:11px 13px;background:var(--light);border:1px solid #e8e2d9;line-height:1.6;}
+  .opts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-top:18px;}
+  .opt label{display:block;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--stone);margin-bottom:6px;}
+  .opt select,.opt input[type=text]{width:100%;padding:9px 11px;border:1.5px solid #e0d9cf;font-family:'Jost',sans-serif;font-size:13px;color:var(--deep);background:var(--light);outline:none;}
+  .tog-row{display:flex;align-items:center;gap:8px;margin-top:5px;font-size:12.5px;}
+  .tog{position:relative;width:36px;height:19px;cursor:pointer;flex-shrink:0;}
+  .tog input{opacity:0;width:0;height:0;}
+  .sl{position:absolute;inset:0;background:#d5cfc6;transition:.25s;border-radius:2px;}
+  .sl:before{content:'';position:absolute;width:13px;height:13px;left:3px;top:3px;background:white;transition:.25s;}
+  input:checked+.sl{background:var(--terra);}
+  input:checked+.sl:before{transform:translateX(17px);}
+  .btn{padding:12px 26px;border:none;font-family:'Jost',sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;transition:all .2s;white-space:nowrap;}
+  .btn-d{background:var(--deep);color:#fff;} .btn-d:hover{background:#3d3525;} .btn-d:disabled{background:#aaa;cursor:not-allowed;}
+  .btn-t{background:var(--terra);color:#fff;} .btn-t:hover{background:#b8946e;} .btn-t:disabled{background:#ccc;cursor:not-allowed;}
+  .btn-row{display:flex;justify-content:flex-end;margin-top:20px;}
+  .pv-card{display:none} .pv-card.on{display:block}
+  .pv-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid #e8e2d9;}
+  .pv-name{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;}
+  .pv-loc{font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--stone);margin-top:4px;}
+  .mosaic{display:grid;gap:3px;margin-bottom:3px;grid-template-columns:2fr 1fr 1fr;grid-template-rows:195px 195px;}
+  .mi{overflow:hidden;background:var(--sand);}
+  .mi:first-child{grid-row:1/3;}
+  .mi img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s;}
+  .mi img:hover{transform:scale(1.04);}
+  .strip{display:flex;gap:3px;margin-bottom:22px;overflow-x:auto;}
+  .si{flex-shrink:0;width:115px;height:75px;overflow:hidden;background:var(--sand);}
+  .si img{width:100%;height:100%;object-fit:cover;display:block;}
+  .specs-bar{display:flex;padding:15px 0;border-top:1px solid #e8e2d9;border-bottom:1px solid #e8e2d9;margin-bottom:20px;}
+  .spec{flex:1;text-align:center;border-right:1px solid #e8e2d9;} .spec:last-child{border-right:none;}
+  .sv{font-family:'Cormorant Garamond',serif;font-size:21px;}
+  .sk{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:3px;}
+  .desc-text{font-size:13.5px;line-height:1.85;color:#4a4030;}
+  .sec-hd{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--stone);margin:20px 0 9px;}
+  .tags{display:flex;flex-wrap:wrap;gap:5px;}
+  .tag{font-size:10.5px;padding:4px 9px;background:var(--light);color:var(--stone);border:1px solid #e8e2d9;}
+  .dists{display:flex;flex-wrap:wrap;gap:9px 20px;}
+  .di{font-size:12px;color:var(--stone);} .di b{color:var(--deep);}
+  .hint{font-size:11px;color:var(--stone);margin-top:16px;padding-top:13px;border-top:1px solid #f0ebe3;}
+  .dl-area{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
+  .prog-wrap{display:none;width:250px;} .prog-wrap.on{display:block;}
+  .prog-bar{height:3px;background:#e8e2d9;border-radius:2px;overflow:hidden;margin-bottom:5px;}
+  .prog-fill{height:100%;background:var(--terra);width:0%;transition:width .25s;border-radius:2px;}
+  .prog-lbl{font-size:10px;color:var(--stone);text-align:right;}
+  .msg{padding:12px 16px;font-size:13px;margin-bottom:16px;display:none;border:1px solid;line-height:1.5;}
+  .msg.on{display:block;}
+  .msg.warn{background:#fef9f0;border-color:#e8d8a0;color:#7a6020;}
+  .msg.info{background:#f0f6ff;border-color:#b8d0f0;color:#2a4a80;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">F</div>
+  <div><h1>Finca Exposé Generator</h1><div class="sub">Unbranded PDF · The Balearian</div></div>
+</header>
+<div class="main">
+  <div class="card">
+    <div class="lbl">Objekt auswählen</div>
+    <div class="prop-grid" id="propGrid"></div>
+    <div class="url-note">
+      ➕ <strong>Weitere Objekte:</strong> Einfach die Booking-URL in den Chat schicken — Claude fügt sie automatisch ins Tool ein.
+    </div>
+    <div class="opts">
+      <div class="opt"><label>Sprache</label>
+        <select id="langSel" onchange="renderPv()">
+          <option value="de">Deutsch</option>
+          <option value="en">English</option>
+          <option value="fr">Français</option>
+        </select>
+      </div>
+      <div class="opt"><label>Fotos im PDF</label>
+        <select id="photoCnt">
+          <option value="6">6 Fotos</option>
+          <option value="12" selected>12 Fotos</option>
+          <option value="20">20 Fotos</option>
+          <option value="99">Alle Fotos</option>
+        </select>
+      </div>
+      <div class="opt"><label>Hinweistext (optional)</label>
+        <input type="text" id="noteIn" placeholder="z.B. Verfügbar ab Mai 2025"/>
+      </div>
+      <div class="opt"><label>Optionen</label>
+        <div class="tog-row">
+          <label class="tog"><input type="checkbox" id="showDist" checked onchange="renderPv()"><span class="sl"></span></label>
+          Entfernungen anzeigen
+        </div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-t" id="dlBtn" onclick="buildPDF()">↓ &nbsp;PDF herunterladen</button>
+    </div>
+  </div>
+
+  <div class="msg warn" id="warnBox"></div>
+  <div class="msg info" id="infoBox"></div>
+
+  <div class="card pv-card" id="pvCard">
+    <div class="pv-hd">
+      <div><div class="pv-name" id="pvName">—</div><div class="pv-loc" id="pvLoc">—</div></div>
+      <div class="dl-area">
+        <div class="prog-wrap" id="progWrap">
+          <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+          <div class="prog-lbl" id="progLbl"></div>
+        </div>
+      </div>
+    </div>
+    <div class="mosaic" id="pvMosaic"></div>
+    <div class="strip" id="pvStrip"></div>
+    <div class="specs-bar" id="pvSpecs"></div>
+    <div class="desc-text" id="pvDesc"></div>
+    <div class="sec-hd" id="hdAmen">Ausstattung</div><div class="tags" id="pvTags"></div>
+    <div id="pvDistWrap"><div class="sec-hd" id="hdDist">Entfernungen</div><div class="dists" id="pvDist"></div></div>
+    <div class="hint" id="pvHint"></div>
+  </div>
+</div>
+
+<script>
+const { jsPDF } = window.jspdf;
+
+// ═══════════════════════════════════════════════════════════════════
+// PROPERTY DATABASE
+// ═══════════════════════════════════════════════════════════════════
+const PROPERTIES = [
+  {
+    id: "vista-dragonera",
+    name: "Villa Vista Dragonera",
+    texts: {
+      de: {
+        location: "Andratx, Mallorca — Südwest",
+        shortDesc: "Exklusive Villa in erster Meereslinie mit spektakulärem Blick auf die Insel Dragonera und privatem Meerzugang.",
+        description: `Die Villa Vista Dragonera ist ein außergewöhnliches Anwesen in absoluter erster Meereslinie in Andratx und besticht durch ihren freien Blick auf die Insel Dragonera sowie das offene Mittelmeer. Ein abschließbarer, privater Meerzugang macht diese Villa zu einer seltenen Besonderheit auf Mallorca und bietet ein Höchstmaß an Privatsphäre und Exklusivität.
+
+Das Haupthaus erstreckt sich über mehrere versetzte Ebenen. Auf der oberen Eingangsebene befindet sich die großzügige Master-Suite mit zwei Balkonen, privater Terrasse und sensationellem Meerblick. Das große Bad en suite ist mit Badewanne, großzügiger Dusche, zwei Waschtischen, Bidet und WC ausgestattet. Ergänzt wird die Suite durch eine separate Ankleide, TV sowie Hometrainer.
+
+Eine halbe Ebene tiefer liegen drei weitere Schlafzimmer: ein großes Schlafzimmer mit Bad en suite sowie zwei separate Schlafzimmer mit gemeinsamem Badezimmer. Alle Schlafzimmer dieser Ebene verfügen über Terrassenausgänge und sind über separate Außenzugänge erreichbar.
+
+Die Wohn- und Küchenebene ist das Herzstück der Villa. Eine nagelneue amerikanische Designerküche mit großer Kühl-/Gefrierkombination mit Eismaker, Gaggenau-Backofen, Induktionskochfeld und Nespresso-Kaffeemaschine. Der offene Wohn- und Essbereich verfügt über einen sehr großen Flachbildschirm sowie einen kleinen offenen Kamin.
+
+Der Außenbereich ist auf entspanntes Leben am Meer ausgerichtet. Ein großzügiger Barbecue-Bereich mit Elektrogrillplatte, zwei Gas-Kochfeldern und klassischem Holzkohlegrill. Der beheizte Salzwasser-Pool mit Jet-Stream-Gegenstromanlage ist von acht Sonnenliegen, einem Doppel-Loungebett, Sonnenschirm und zwei Markisen umgeben.
+
+Unterhalb des Hauses befindet sich eine Grünfläche mit Tischtennisplatte sowie der private Meerzugang über ca. 70 Stufen. Das separate Gästehaus bietet ein klimatisiertes Schlafzimmer mit Duschbad — ideal für Gäste oder Personal.`,
+        distances: {"Meer":"~ 50 m","Strand":"~ 6 km","Einkaufen":"~ 1 km","Restaurant":"~ 1 km","Golf":"~ 6 km","Flughafen":"~ 44 km","Fähre":"~ 32 km"},
+        amenities: ["Meerblick (außergewöhnlich)","Privater Meerzugang","Beheizter Salzwasser-Pool","Gegenstromanlage","Sauna","Fußbodenheizung","WLAN","Klimaanlage","Offener Kamin","Separates Gästehaus","BBQ-Außenbereich","Außenküche","Tischtennis","8 Sonnenliegen","Gaggenau-Designerküche","Nespresso","Eismaker","Waschmaschine & Trockner","Safe","Alarmanlage","Abgeschlossenes Grundstück","2× TV Flat","HiFi-Anlage","Heimkino","Sonnenschirme & Markisen"]
+      },
+      en: {
+        location: "Andratx, Mallorca — South West",
+        shortDesc: "Exceptional seafront villa in Andratx with breathtaking views of Dragonera Island, a private lockable sea access, heated saltwater pool, sauna, and a separate guesthouse.",
+        description: `Villa Vista Dragonera is a truly unique property set in absolute first sea line in Andratx, offering uninterrupted views of Dragonera Island and the open Mediterranean Sea. A private, lockable sea access makes this villa a rare and exclusive retreat, combining privacy, direct contact with the sea, and dramatic coastal scenery.
+
+The main house is arranged over several split levels. On the upper entrance level, the spacious master suite enjoys two balconies, a private terrace, and sensational sea views towards Dragonera and the open sea. The large en-suite bathroom is equipped with a bathtub, generous walk-in shower, double washbasins, bidet, and WC. Additional features include a separate dressing room, TV, an exercise bike, and shutters throughout.
+
+One level below are three further bedrooms: one large bedroom with en-suite bathroom and two additional bedrooms sharing a bathroom. All bedrooms on this level have direct terrace access and are reached via separate external entrances, offering a high degree of privacy.
+
+The lower living and kitchen level forms the heart of the villa. A brand-new American-style designer kitchen is fully equipped with a large fridge/freezer with ice maker, Gaggenau oven, induction hob, and Nespresso coffee machine. The open-plan living and dining area features a very large flat-screen TV and a small open fireplace. Directly in front of the living area is a generous outdoor lounge space overlooking the sea.
+
+Additional amenities include underfloor heating, sauna, high-speed Wi-Fi, and additional flat-screen TVs throughout.
+
+The separate guesthouse offers a shower room with WC and a laundry room on the ground floor. Upstairs, there is an air-conditioned bedroom with pleasant views — ideal for guests or staff.
+
+The outdoor area is designed for relaxed living by the sea. A built-in barbecue features an electric grill plate, two gas burners, a sink, and a charcoal/wood grill. The heated saltwater pool includes a jet-stream counter-current system and is surrounded by eight sun loungers, a large double lounge bed, sun umbrella, and two awnings. Below the villa, a private sea access is reached via approximately 70 steps — recommended only in calm conditions; water shoes advised.`,
+        distances: {"Sea":"~ 50 m","Beach":"~ 6 km","Shopping":"~ 1 km","Restaurant":"~ 1 km","Golf":"~ 6 km","Airport":"~ 44 km","Ferry":"~ 32 km"},
+        amenities: ["Exceptional sea view","Private sea access","Heated saltwater pool","Counter-current system","Sauna","Underfloor heating","Wi-Fi","Air conditioning","Open fireplace","Separate guesthouse","BBQ outdoor area","Outdoor kitchen","Table tennis","8 sun loungers","Gaggenau designer kitchen","Nespresso","Ice maker","Washing machine & dryer","Safe","Alarm system","Secured private plot","2× flat-screen TV","Hi-fi system","Home cinema","Sun umbrellas & awnings"]
+      },
+      fr: {
+        location: "Andratx, Majorque — Sud-Ouest",
+        shortDesc: "Villa exclusive en première ligne de mer avec une vue spectaculaire sur l'île Dragonera et un accès privé à la mer.",
+        description: `La Villa Vista Dragonera est une propriété exceptionnelle en absolue première ligne de mer à Andratx, offrant une vue dégagée sur l'île Dragonera et la Méditerranée. Un accès privé et sécurisé à la mer fait de cette villa une rareté sur Majorque, alliant intimité, contact direct avec la mer et panoramas côtiers saisissants.
+
+La maison principale s'étend sur plusieurs niveaux décalés. Au niveau d'entrée supérieur, la spacieuse suite master bénéficie de deux balcons, d'une terrasse privée et d'une vue mer sensationnelle. La grande salle de bain attenante est équipée d'une baignoire, d'une douche spacieuse, de deux vasques, d'un bidet et de WC.
+
+Un niveau plus bas se trouvent trois chambres supplémentaires, toutes avec accès direct à la terrasse. Le niveau salon et cuisine constitue le cœur de la villa, avec une cuisine américaine design toute neuve équipée d'un réfrigérateur-congélateur avec machine à glaçons, four Gaggenau, plaque à induction et machine Nespresso.
+
+L'espace extérieur est conçu pour une vie détendue au bord de la mer : piscine en eau salée chauffée avec système de contre-courant, huit chaises longues, et vue spectaculaire sur Dragonera. Un accès privé à la mer via environ 70 marches complète cet ensemble exceptionnel.`,
+        distances: {"Mer":"~ 50 m","Plage":"~ 6 km","Commerces":"~ 1 km","Restaurant":"~ 1 km","Golf":"~ 6 km","Aéroport":"~ 44 km","Ferry":"~ 32 km"},
+        amenities: ["Vue mer (exceptionnelle)","Accès privé à la mer","Piscine eau salée chauffée","Système contre-courant","Sauna","Chauffage au sol","Wi-Fi","Climatisation","Cheminée ouverte","Maison d'hôtes séparée","BBQ extérieur","Cuisine extérieure","Tennis de table","8 chaises longues","Cuisine design Gaggenau","Nespresso","Machine à glaçons","Lave-linge & sèche-linge","Coffre-fort","Alarme","Propriété clôturée","2× TV écran plat","Chaîne Hi-fi","Home cinéma","Parasols & stores"]
+      }
+    },
+    specs:{persons:"10",bedrooms:"5",bathrooms:"4",size:"450 m²"},
+    imageIds:[25976369,25976368,25976367,25976348,25976338,25976364,25976358,25976346,25976363,25976360,25976361,25976359,25976357,25976366,25976347,25976336,25976351,25976349,25976353,25976352,25976335,25976337,25976339,25976334,25976333,25976350,25976340,25976341,25976342,25976343,25976344,25976355,25976345,25976356,25976354,25976362,25976365]
+  },
+  {
+    id: "can-torres",
+    name: "Can Torres Ibiza",
+    texts: {
+      de: {
+        location: "Es Cubells, Ibiza — Südwest",
+        shortDesc: "Außergewöhnliche Designer-Residenz nahe Es Cubells, inspiriert von einer marokkanischen Festung, mit Meerblick und luxuriösem Boho-Chic-Interieur.",
+        description: `Wie eine marokkanische Festung erhebt sich die Finca Can Torres hinter dem Kloster von Es Cubells. Schräge Wände, außergewöhnlich hohe und schmale Fenster sowie offene Galerien verleihen der Finca ihren ikonischen Charakter — entworfen vom renommierten französischen Architekten Nicolas Besset.
+
+Die Finca verbindet Boho-Chic mit zeitloser Eleganz und modernem Wohnkomfort. In der Nähe des exklusiven Dorfes Es Cubells gelegen, bietet sie schnellen Zugang zu einigen der schönsten Strände Ibizas.
+
+Herzstück ist der doppelstöckige Wohnbereich mit Galerie, ausgestattet mit sorgfältig kuratierter Kunst, eklektischen Dekorationen und Design-Möbeln. Dieser Bereich geht fließend in den Essbereich mit großer Speisetafel sowie in die offene, voll ausgestattete Küche über.
+
+Der Außenbereich bietet üppige Gärten mit Pinien, Palmen, Olivenbäumen und Steingärten. Mehrere Terrassen mit Meerblick bieten unterschiedliche Rückzugsorte. Der großzügige Pool mit Liegestühlen, Daybed und Baldachin bildet das Zentrum des Außenbereichs.
+
+Auf Anfrage: separates Gästeapartment für zwei Personen mit Doppelbett und Außendusche.`,
+        distances: {"Meer":"~ 2 km","Strand":"~ 2 km","Einkaufen":"~ 500 m","Restaurant":"~ 500 m","Golf":"~ 23 km","Flughafen":"~ 11 km","Fähre":"~ 17 km"},
+        amenities: ["Meerblick (außergewöhnlich)","Außenpool","Mehrere Meerblick-Terrassen","Garten mit Pinien & Palmen","WLAN","Klimaanlage","Heizung","Offene Designerküche","Spülmaschine","Extra Gefrierschrank","Espressomaschine","Waschmaschine","Safe","Alarmanlage","TV international","HiFi-Anlage","Sonnenliegen & Daybed","Gasgrill (Weber)","Abgeschlossenes Grundstück","Gästeapartment (auf Anfrage)","Badewanne","Außendusche","Privatparkplatz","Kinderbett & Hochstuhl"]
+      },
+      en: {
+        location: "Es Cubells, Ibiza — South West",
+        shortDesc: "Extraordinary designer residence near Es Cubells. Inspired by a Moroccan fortress and designed by renowned French architect Nicolas Besset, combining boho chic, avant-garde architecture and modern comfort with sea views.",
+        description: `Like a Moroccan fortress, Finca Can Torres rises behind the monastery of Es Cubells. Together with the small church, the three buildings with their extremely thick walls form an architecturally striking ensemble. Slanted walls, exceptionally tall and narrow windows, and open galleries give the finca its iconic character — a true design statement conceived by renowned French architect Nicolas Besset.
+
+Finca Can Torres is a unique residence combining boho chic with timeless elegance and modern comfort. Located close to the exclusive village of Es Cubells, it offers quick access to some of Ibiza's most beautiful and secluded beaches.
+
+The interiors are open, light-filled and of outstanding aesthetic quality. The centrepiece is the double-height living area with gallery, furnished with carefully curated art, eclectic décor and comfortable designer pieces. This space flows seamlessly into the dining area with its large statement table and the open, fully equipped kitchen — perfect for convivial evenings and formal dinners alike.
+
+The outdoor spaces are equally impressive. Lush, well-tended gardens with pine trees, palms, olive trees, and stone gardens surround the finca. Multiple terraces with sea views offer different retreats — from al-fresco dining under the stars to relaxed lounge areas. The generous pool with sun loungers, daybed, and canopy forms the centrepiece of the outdoor space.
+
+A separate guest apartment for two persons with a double bed and outdoor shower is available on request — ideal for guests or staff.`,
+        distances: {"Sea":"~ 2 km","Beach":"~ 2 km","Shopping":"~ 500 m","Restaurant":"~ 500 m","Golf":"~ 23 km","Airport":"~ 11 km","Ferry":"~ 17 km"},
+        amenities: ["Exceptional sea view","Outdoor pool","Multiple sea-view terraces","Garden with pines & palms","Wi-Fi","Air conditioning","Heating","Open designer kitchen","Dishwasher","Extra freezer","Espresso machine","Washing machine","Safe","Alarm system","International TV","Hi-fi system","Sun loungers & daybed","Gas BBQ (Weber)","Secured private plot","Guest apartment (on request)","Bathtub","Outdoor shower","Private parking","Baby cot & high chair"]
+      },
+      fr: {
+        location: "Es Cubells, Ibiza — Sud-Ouest",
+        shortDesc: "Résidence design extraordinaire près d'Es Cubells, inspirée d'une forteresse marocaine, avec vue sur la mer et intérieur luxueux Boho-Chic.",
+        description: `Comme une forteresse marocaine, la Finca Can Torres se dresse derrière le monastère d'Es Cubells. Des murs inclinés, des fenêtres exceptionnellement hautes et étroites, et des galeries ouvertes confèrent à la finca son caractère iconique — conçue par le célèbre architecte français Nicolas Besset.
+
+La finca associe le Boho-Chic à une élégance intemporelle et un confort moderne. Située près du village exclusif d'Es Cubells, elle offre un accès rapide à certaines des plus belles plages d'Ibiza.
+
+La pièce maîtresse est le salon à double hauteur avec galerie, meublé d'œuvres d'art soigneusement choisies et de pièces de design confortables. Cet espace se prolonge vers la salle à manger avec sa grande table et la cuisine ouverte entièrement équipée.
+
+Les espaces extérieurs sont tout aussi impressionnants : jardins luxuriants avec pins, palmiers et oliviers, plusieurs terrasses avec vue mer, piscine généreuse avec chaises longues, daybed et baldaquin.
+
+Un appartement indépendant pour deux personnes est disponible sur demande.`,
+        distances: {"Mer":"~ 2 km","Plage":"~ 2 km","Commerces":"~ 500 m","Restaurant":"~ 500 m","Golf":"~ 23 km","Aéroport":"~ 11 km","Ferry":"~ 17 km"},
+        amenities: ["Vue mer (exceptionnelle)","Piscine extérieure","Terrasses avec vue mer","Jardin avec pins & palmiers","Wi-Fi","Climatisation","Chauffage","Cuisine design ouverte","Lave-vaisselle","Congélateur séparé","Machine à expresso","Lave-linge","Coffre-fort","Alarme","TV internationale","Chaîne Hi-fi","Chaises longues & daybed","BBQ gaz (Weber)","Propriété clôturée","Appartement invités (sur demande)","Baignoire","Douche extérieure","Parking privé","Lit bébé & chaise haute"]
+      }
+    },
+    specs:{persons:"8",bedrooms:"4",bathrooms:"4",size:"425 m²"},
+    imageIds:[25142831,25142835,25142836,25142812,25142848,25142809,25142838,25142833,25142834,25142785,25142786,25142787,25142788,25142789,25142791,25142792,25142793,25142795,25142796,25142799,25142800,25142784,25142801,25142802,25142803,25142804,25142805,25142806,25142807,25142808,25142810,25142811,25142813,25142814,25142815,25142816,25142817,25142818,25142819,25142820,25142821,25142822,25142841,25142823,25142824,25142825,25142826,25142827,25142828,25142829,25142830,25142837,25142839,25142840,25142842,25142843,25142844,25142845,25142846,25142847,25142849,25142832]
+  },
+  {
+    id: "juan-carlos",
+    name: "Villa Juan Carlos",
+    texts: {
+      de: {
+        location: "Cala Vinyes, Mallorca — Südwest",
+        shortDesc: "Außergewöhnliche Luxusvilla in erster Meereslinie mit 700 m² Wohnfläche, Salzwasser-Infinity-Pool, Whirlpool und exklusiver Teleworking-Lounge mit Panorama-Meerblick.",
+        description: `Die Villa Juan Carlos ist eine einzigartige Luxusvilla direkt am Meer mit atemberaubendem Panoramablick auf das Mittelmeer. Mit einer großzügigen Wohnfläche von 700 m² auf einem 2.200 m² großen Grundstück bietet sie viel Raum, Privatsphäre und höchsten Komfort.
+
+Im Obergeschoss befinden sich fünf großzügige Schlafzimmer, die jeweils über ein eigenes Badezimmer mit Dusche und WC verfügen. Die Master-Suite bietet zusätzlich eine luxuriöse Whirlpool-Badewanne sowie eine Power-Dusche für ein Spa-ähnliches Erlebnis. Alle Schlafzimmer verfügen über Meerblick und direkten Zugang zur Terrasse — ausgestattet mit modernen Fernsehern, Bluetooth-Lautsprechern, Haartrockner und unabhängigen Klimaanlagen.
+
+Für Gäste, die auch während des Aufenthalts arbeiten möchten, bietet die Villa eine separate Hightech-Teleworking- und Meeting-Lounge auf einer Terrasse mit spektakulärem Meerblick.
+
+Ein weiteres Highlight ist die Chill-Out-Lounge mit einem großen beheizten Whirlpool und spektakulärem Meeresblick. Der Salzwasser-Infinity-Pool fügt sich harmonisch in die Meereslandschaft ein. Auf Wunsch kann der Pool gegen Aufpreis beheizt werden.
+
+Der kleine Ort Cala Vinyes liegt an der Südwestküste Mallorcas, umgeben von Felsklippen und Pinienwäldern. Palma mit Shopping, Tapas-Bars und Restaurants ist nur 15 Autominuten entfernt.`,
+        distances: {"Strand":"~ 1,5 km","Einkaufen":"~ 160 m","Restaurant":"~ 210 m","Golf":"~ 4 km","Flughafen":"~ 28 km","Stadt Palma":"~ 8 km"},
+        amenities: ["Meerblick (außergewöhnlich)","Direkter Meerzugang","Salzwasser-Infinity-Pool","Beheizter Whirlpool","Teleworking-Lounge","Chill-Out-Lounge","WLAN","Klimaanlage (unabhängig p. Zimmer)","Heizung","Kamin","Nespresso","Spülmaschine","Waschmaschine & Trockner","Safe","Alarmanlage","Garage & Privatparkplatz","Gasgrill","Sonnenliegen","Außendusche","Abgeschlossenes Grundstück","TV international (alle Zimmer)","HiFi-Anlage","Heimkino","Spielekonsole","Badewanne (Master-Suite)","Bidet","Kinderbett & Hochstuhl"]
+      },
+      en: {
+        location: "Cala Vinyes, Mallorca — South West",
+        shortDesc: "Exceptional luxury seafront villa with 700 m² of living space, a saltwater infinity pool, heated whirlpool, and an exclusive teleworking lounge with panoramic sea views.",
+        description: `Villa Juan Carlos is a unique and extraordinary luxury villa located directly by the sea, offering breathtaking panoramic views of the Mediterranean. With 700 m² of living space on a 2,200 m² private plot, the villa offers generous space, privacy and first-class comfort.
+
+The upper floor features five spacious bedrooms, each with its own en-suite bathroom with shower and toilet. The master suite additionally includes a luxurious whirlpool bathtub and power shower, creating a private spa-like experience. All bedrooms offer stunning sea views and direct access to the terrace, and are equipped with modern flat-screen TVs, Bluetooth speakers, hairdryers, independent air conditioning, and mobile phone chargers.
+
+For guests who need to work during their stay, the villa offers a separate high-tech teleworking and meeting lounge located on a terrace with spectacular sea views — an inspiring environment to stay productive while enjoying the villa's exclusive atmosphere.
+
+Another highlight is the chill-out lounge featuring a large heated whirlpool with breathtaking sea views. The saltwater infinity pool blends seamlessly with the horizon. The pool can be heated for an extra charge, allowing guests to enjoy it throughout the year.
+
+Cala Vinyes is a small village on Mallorca's south-west coast, surrounded by steep cliffs and pine forests. Palma with its many shopping options, tapas bars, clubs and restaurants is only 15 minutes away by car. The yacht harbours Puerto Portals and Port Adriano as well as the beach clubs Nikki and Zhero Boathouse are also a short drive away.`,
+        distances: {"Beach":"~ 1.5 km","Shopping":"~ 160 m","Restaurant":"~ 210 m","Golf":"~ 4 km","Airport":"~ 28 km","City Palma":"~ 8 km"},
+        amenities: ["Exceptional sea view","Direct sea access","Saltwater infinity pool","Heated whirlpool","Teleworking lounge","Chill-out lounge","Wi-Fi","Independent A/C per room","Heating","Fireplace","Nespresso","Dishwasher","Washing machine & dryer","Safe","Alarm system","Garage & private parking","Gas BBQ","Sun loungers","Outdoor shower","Secured private plot","International TV (all rooms)","Hi-fi system","Home cinema","Games console","Bathtub (master suite)","Bidet","Baby cot & high chair"]
+      },
+      fr: {
+        location: "Cala Vinyes, Majorque — Sud-Ouest",
+        shortDesc: "Villa de luxe exceptionnelle en première ligne de mer avec 700 m² habitables, piscine à débordement en eau salée, jacuzzi chauffé et lounge de télétravail exclusif avec vue panoramique sur la mer.",
+        description: `La Villa Juan Carlos est une villa de luxe unique située directement en bord de mer, offrant une vue panoramique à couper le souffle sur la Méditerranée. Avec 700 m² de surface habitable sur un terrain privé de 2 200 m², la villa offre espace généreux, intimité et confort de premier ordre.
+
+L'étage supérieur comprend cinq chambres spacieuses, chacune avec sa propre salle de bain privative. La suite master dispose en plus d'une baignoire à jets et d'une douche hydromassante pour une expérience spa privée. Toutes les chambres offrent une vue mer et un accès direct à la terrasse.
+
+Pour les clients devant travailler pendant leur séjour, la villa propose un salon de télétravail et de réunion high-tech séparé situé sur une terrasse avec une vue mer spectaculaire.
+
+Le lounge chill-out avec un grand jacuzzi chauffé et la piscine à débordement en eau salée complètent cet ensemble exceptionnel. La piscine peut être chauffée en option.
+
+Cala Vinyes est un petit village sur la côte sud-ouest de Majorque. Palma avec ses nombreuses options de shopping, bars à tapas et restaurants n'est qu'à 15 minutes en voiture.`,
+        distances: {"Plage":"~ 1,5 km","Commerces":"~ 160 m","Restaurant":"~ 210 m","Golf":"~ 4 km","Aéroport":"~ 28 km","Palma":"~ 8 km"},
+        amenities: ["Vue mer (exceptionnelle)","Accès direct à la mer","Piscine à débordement eau salée","Jacuzzi chauffé","Lounge de télétravail","Lounge chill-out","Wi-Fi","Clim. indépendante par chambre","Chauffage","Cheminée","Nespresso","Lave-vaisselle","Lave-linge & sèche-linge","Coffre-fort","Alarme","Garage & parking privé","BBQ gaz","Chaises longues","Douche extérieure","Propriété clôturée","TV internationale (toutes chambres)","Chaîne Hi-fi","Home cinéma","Console de jeux","Baignoire (suite master)","Bidet","Lit bébé & chaise haute"]
+      }
+    },
+    specs:{persons:"10",bedrooms:"7",bathrooms:"5",size:"700 m²"},
+    imageIds:[26605530,25169412,25169405,25169393,25169399,25169408,25169403,25169406,25169404,25169407,26605139,26605043,26605044,25169409,25169396,25169395,25169398,25169394,26605573,25169413,25169401]
+  },
+  {
+    id: "son-silvestre",
+    name: "Finca Son Silvestre",
+    texts: {
+      de: {
+        location: "Santanyí, Mallorca — Südost",
+        shortDesc: "Eleganter Luxus-Landsitz in Alleinlage nahe Santanyí mit Panorama-Meerblick, 35.000 m² mediterranem Grundstück, Pool, Sauna, Fitnessraum und familienfreundlicher Ausstattung.",
+        description: `Die Luxus-Finca Son Silvestre thront auf einer Anhöhe nahe Santanyí und bietet spektakulären Panorama-Meerblick sowie absolute Ruhe auf einem 35.000 m² großen mediterranen Grundstück. Eine malerische, von Zypressen gesäumte Auffahrt führt zum imposanten Haupthaus.
+
+Das Erdgeschoss empfängt mit einer lichtdurchfluteten Halle mit Kamin und mehreren Fenstertüren. Angrenzend befinden sich ein gemütlicher Salon mit Kamin, ein eleganter Essbereich sowie eine hochwertig ausgestattete professionelle Landhausküche. Ein weiterer Speiseraum führt in den offenen Patio mit Sommerküche und Gasgrill — der perfekte Ort für lange, warme Abende im Freien.
+
+Direkt davor liegt der gepflegte Poolgarten mit einem 10 × 5 m großen Pool, eingerahmt von zwei schattigen Pavillons und mit wunderschönem Meerblick. Auf der gegenüberliegenden Seite des Patios liegen zwei Schlafzimmer mit en-suite Duschbädern.
+
+Über zwei Treppen gelangt man in die obere Etage, wo drei weitere Doppelschlafzimmer mit en-suite Bädern, ein Kinderzimmer mit eigenem Bad sowie ein großes, voll ausgestattetes Spielzimmer warten — ideal für Familien und Gruppen.
+
+Der Außenbereich bietet weitläufige Terrassenflächen, loungeartige Sitzbereiche, eine mediterrane Gartenlandschaft mit Rasenflächen, einen Kinderspielplatz, Trampolin und einen kleinen Fußballplatz. Sauna und Fitnessraum ergänzen den exklusiven Charakter.
+
+Zur Ausstattung gehören Klimaanlage in allen Schlafzimmern, Fußbodenheizung, WLAN, Sonos Sound-System, SAT-TV in allen Schlafzimmern sowie tägliche Reinigung (Montag bis Samstag). Santanyí mit exzellenten Restaurants ist nur wenige Minuten entfernt, traumhafte Sandstrände in 10–15 Minuten erreichbar.`,
+        distances: {"Meer":"~ 7 km","Strand":"~ 7 km","Restaurant":"~ 2 km","Stadt Santanyí":"~ 2 km","Golf":"~ 13 km","Flughafen":"~ 47 km"},
+        amenities: ["Panorama-Meerblick","Pool (10 × 5 m)","Sauna","Fitnessraum","Spielzimmer","Kinderspielplatz & Trampolin","Fußballplatz","Patio mit Sommerküche","Gasgrill","Fußbodenheizung","Klimaanlage (alle Schlafzimmer)","WLAN","Sonos Sound-System","SAT-TV (alle Schlafzimmer)","Nespresso","Professionelle Landhausküche","Spülmaschine","Extra Gefrierschrank","Waschmaschine & Trockner","Safe","Alarmanlage","Tägliche Reinigung (Mo–Sa)","Offener Kamin (2×)","Privatparkplatz","Abgeschlossenes Grundstück","Hunde erlaubt (max. 1)","Zentralheizung"]
+      },
+      en: {
+        location: "Santanyí, Mallorca — South East",
+        shortDesc: "Elegant luxury country estate near Santanyí in a secluded location with panoramic sea views, 35,000 m² of Mediterranean grounds, pool, sauna, gym and family-friendly amenities.",
+        description: `Luxury Finca Son Silvestre is perched on a hilltop near Santanyí, offering spectacular panoramic sea views and complete seclusion on a 35,000 m² Mediterranean estate. A picturesque cypress-lined driveway leads to the impressive main house.
+
+The ground floor welcomes you with a light-filled hall featuring a fireplace and multiple French doors. Adjacent are a comfortable lounge with fireplace, an elegant dining area, and a fully equipped professional country kitchen. A second dining room opens onto the patio with summer kitchen and gas barbecue — perfect for long, warm evenings outdoors.
+
+Directly in front lies the beautifully maintained pool garden with a 10 × 5 m pool, framed by two shaded pavilions and offering stunning sea views. On the opposite side of the patio are two bedrooms with en-suite shower rooms.
+
+Two staircases lead to the upper floor, where three further double bedrooms with en-suite bathrooms, a children's room with its own bathroom, and a large fully equipped games room await — ideal for families and groups.
+
+The outdoor areas feature extensive terraced spaces, lounge seating, a Mediterranean garden with lawns, a children's playground, trampoline and a small football pitch. Sauna and gym round off the exclusive character of this estate.
+
+Amenities include air conditioning in all bedrooms, underfloor heating, Wi-Fi, Sonos sound system, satellite TV in all bedrooms, and daily cleaning (Monday to Saturday). Santanyí with excellent restaurants and shops is just minutes away; beautiful sandy beaches are reachable in 10–15 minutes.`,
+        distances: {"Sea":"~ 7 km","Beach":"~ 7 km","Restaurant":"~ 2 km","Santanyí":"~ 2 km","Golf":"~ 13 km","Airport":"~ 47 km"},
+        amenities: ["Panoramic sea view","Pool (10 × 5 m)","Sauna","Gym","Games room","Children's playground & trampoline","Football pitch","Patio with summer kitchen","Gas BBQ","Underfloor heating","Air conditioning (all bedrooms)","Wi-Fi","Sonos sound system","Satellite TV (all bedrooms)","Nespresso","Professional country kitchen","Dishwasher","Extra freezer","Washing machine & dryer","Safe","Alarm system","Daily cleaning (Mon–Sat)","Open fireplace (×2)","Private parking","Secured private plot","Dogs welcome (max. 1)","Central heating"]
+      },
+      fr: {
+        location: "Santanyí, Majorque — Sud-Est",
+        shortDesc: "Élégant domaine de luxe près de Santanyí dans un emplacement isolé avec vue panoramique sur la mer, 35 000 m² de terrain méditerranéen, piscine, sauna, salle de sport et équipements familiaux.",
+        description: `La Finca Son Silvestre est perchée sur une colline près de Santanyí, offrant une vue panoramique spectaculaire sur la mer et une tranquillité absolue sur un domaine de 35 000 m². Une pittoresque allée bordée de cyprès mène à l'imposante maison principale.
+
+Le rez-de-chaussée accueille avec un hall lumineux doté d'une cheminée, un salon confortable, une salle à manger élégante et une cuisine de campagne professionnelle. Une deuxième salle à manger s'ouvre sur le patio avec cuisine d'été et barbecue à gaz.
+
+La piscine (10 × 5 m) est encadrée de deux pavillons ombragés avec vue sur la mer. L'étage abrite trois chambres doubles, une chambre d'enfants et une grande salle de jeux — idéal pour les familles.
+
+Les espaces extérieurs comprennent de vastes terrasses, jardins méditerranéens, aire de jeux, trampoline et terrain de football. Sauna et salle de sport complètent ce domaine exclusif.`,
+        distances: {"Mer":"~ 7 km","Plage":"~ 7 km","Restaurant":"~ 2 km","Santanyí":"~ 2 km","Golf":"~ 13 km","Aéroport":"~ 47 km"},
+        amenities: ["Vue panoramique mer","Piscine (10 × 5 m)","Sauna","Salle de sport","Salle de jeux","Aire de jeux & trampoline","Terrain de football","Patio cuisine d'été","BBQ gaz","Chauffage au sol","Climatisation (toutes chambres)","Wi-Fi","Système Sonos","TV satellite (toutes chambres)","Nespresso","Cuisine campagnarde professionnelle","Lave-vaisselle","Congélateur séparé","Lave-linge & sèche-linge","Coffre-fort","Alarme","Nettoyage quotidien (lun–sam)","Cheminée ouverte (×2)","Parking privé","Propriété clôturée","Chiens acceptés (max. 1)","Chauffage central"]
+      }
+    },
+    specs:{persons:"12",bedrooms:"8",bathrooms:"7",size:"650 m²"},
+    imageIds:[26822919,26822934,26822973,26822978,26822916,26822976,26822925,26822918,26822921,26822961,26822927,26822923,26822926,26822929,26822930,26822932,26822933,26822935,26822937,26822938,26822939,26822940,26822941,26822942,26822943,26822944,26822947,26822948,26822949,26822950,26822951,26822952,26822953,26822954,26822956,26822957,26822958,26822959,26822960,26822962,26822963,26822982,26822964,26822965,26822967,26822968,26822969,26822970,26822971,26822972,26822974,26822975,26822977,26822979,26822980,26822981,26822936]
+  }
+];
+
+// ── State ─────────────────────────────────────────────────────────
+let selectedId = PROPERTIES[0].id;
+let DATA = PROPERTIES[0];
+
+// Get language-specific texts, fall back to 'de'
+function T(prop, lang){ return prop.texts[lang] || prop.texts['de']; }
+function getLang(){ return document.getElementById('langSel').value; }
+
+// ── Image URL helpers ─────────────────────────────────────────────
+function iUrl(id){ return `https://dyn.v-office.com/image/xl/${id}.webp`; }
+function iUrlProxy(id){ return `https://wsrv.nl/?url=dyn.v-office.com/image/xl/${id}.webp&w=1200&output=jpg&q=85`; }
+
+// ── Init ──────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  buildGrid();
+  renderPv();
+  document.getElementById('pvCard').classList.add('on');
+});
+
+function buildGrid(){
+  const lang = getLang();
+  const grid = document.getElementById('propGrid');
+  grid.innerHTML = '';
+  PROPERTIES.forEach(p => {
+    const t = T(p, lang);
+    const card = document.createElement('div');
+    card.className = 'prop-card' + (p.id === selectedId ? ' active' : '');
+    card.onclick = () => { selectedId = p.id; DATA = p; buildGrid(); renderPv(); };
+    card.innerHTML = `
+      <img class="pc-thumb" src="${iUrl(p.imageIds[0])}" onerror="this.style.display='none'">
+      <div class="pc-info">
+        <div class="pc-name">${p.name}</div>
+        <div class="pc-loc">${t.location}</div>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+function renderPv(){
+  const d = DATA;
+  const lang = getLang();
+  const t = T(d, lang);
+
+  document.getElementById('pvName').textContent = d.name;
+  document.getElementById('pvLoc').textContent  = t.location;
+  document.getElementById('pvDesc').textContent = t.description;
+  document.getElementById('hdAmen').textContent = lang==='en'?'Amenities':lang==='fr'?'Équipements':'Ausstattung';
+  document.getElementById('hdDist').textContent = lang==='en'?'Distances':lang==='fr'?'Distances':'Entfernungen';
+
+  // Mosaic
+  const mosaic = document.getElementById('pvMosaic');
+  mosaic.innerHTML = '';
+  d.imageIds.slice(0,5).forEach(id => {
+    const div = document.createElement('div'); div.className='mi';
+    const img = document.createElement('img');
+    img.src = iUrl(id); img.alt = d.name; img.loading='lazy';
+    img.onerror = () => { div.style.background='#ddd'; };
+    div.appendChild(img); mosaic.appendChild(div);
+  });
+
+  // Strip
+  const strip = document.getElementById('pvStrip');
+  strip.innerHTML = '';
+  d.imageIds.slice(5).forEach(id => {
+    const div = document.createElement('div'); div.className='si';
+    const img = document.createElement('img');
+    img.src = iUrl(id); img.alt = d.name; img.loading='lazy';
+    img.onerror = () => { div.style.background='#ddd'; };
+    div.appendChild(img); strip.appendChild(div);
+  });
+
+  // Specs
+  const sl = lang==='en'?['Persons','Bedrooms','Bathrooms','Area']:
+             lang==='fr'?['Personnes','Chambres','Salles de bain','Surface']:
+             ['Personen max.','Schlafzimmer','Badezimmer','Fläche'];
+  document.getElementById('pvSpecs').innerHTML =
+    [[sl[0],d.specs.persons],[sl[1],d.specs.bedrooms],[sl[2],d.specs.bathrooms],[sl[3],d.specs.size]]
+    .map(([k,v])=>`<div class="spec"><div class="sv">${v}</div><div class="sk">${k}</div></div>`).join('');
+
+  document.getElementById('pvTags').innerHTML = t.amenities.map(a=>`<div class="tag">${a}</div>`).join('');
+
+  const show = document.getElementById('showDist').checked;
+  document.getElementById('pvDistWrap').style.display = show?'':'none';
+  if(show) document.getElementById('pvDist').innerHTML =
+    Object.entries(t.distances).map(([k,v])=>`<div class="di">${k}: <b>${v}</b></div>`).join('');
+
+  const max = parseInt(document.getElementById('photoCnt').value);
+  const hintLabels = {
+    de: `PDF enthält ${Math.min(max,d.imageIds.length)} Fotos · ${t.amenities.length} Ausstattungsmerkmale`,
+    en: `PDF contains ${Math.min(max,d.imageIds.length)} photos · ${t.amenities.length} amenities`,
+    fr: `Le PDF contient ${Math.min(max,d.imageIds.length)} photos · ${t.amenities.length} équipements`,
+  };
+  document.getElementById('pvHint').textContent = hintLabels[lang] || hintLabels.de;
+}
+
+// ── Image loading for PDF via wsrv.nl proxy ───────────────────────
+function loadViaProxy(id) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    const timer = setTimeout(() => resolve(null), 12000);
+    img.onload = () => {
+      clearTimeout(timer);
+      try {
+        const c = document.createElement('canvas');
+        c.width  = img.naturalWidth  || 1200;
+        c.height = img.naturalHeight || 800;
+        c.getContext('2d').drawImage(img, 0, 0);
+        resolve(c.toDataURL('image/jpeg', 0.82));
+      } catch(e) { resolve(null); }
+    };
+    img.onerror = () => { clearTimeout(timer); resolve(null); };
+    img.src = iUrlProxy(id);
+  });
+}
+
+// ── PDF ───────────────────────────────────────────────────────────
+async function buildPDF(){
+  const btn = document.getElementById('dlBtn');
+  btn.disabled = true;
+  const pw = document.getElementById('progWrap');
+  pw.classList.add('on');
+  document.getElementById('warnBox').classList.remove('on');
+  document.getElementById('infoBox').classList.remove('on');
+
+  const setP = (pct, lbl) => {
+    document.getElementById('progFill').style.width = pct+'%';
+    document.getElementById('progLbl').textContent  = lbl;
+  };
+
+  try {
+    const d    = DATA;
+    const lang = getLang();
+    const t    = T(d, lang);
+    const note = document.getElementById('noteIn').value.trim();
+    const showD= document.getElementById('showDist').checked;
+    const max  = parseInt(document.getElementById('photoCnt').value);
+    const ids  = d.imageIds.slice(0, max);
+
+    const L = {
+      de:{desc:'Beschreibung',amen:'Ausstattung',dist:'Entfernungen',persons:'Personen max.',beds:'Schlafzimmer',baths:'Badezimmer',area:'Fläche',loading:'Foto',building:'PDF aufbauen…',done:'✓ Fertig!'},
+      en:{desc:'Description',amen:'Amenities',dist:'Distances',persons:'Persons',beds:'Bedrooms',baths:'Bathrooms',area:'Area',loading:'Photo',building:'Building PDF…',done:'✓ Done!'},
+      fr:{desc:'Description',amen:'Équipements',dist:'Distances',persons:'Personnes',beds:'Chambres',baths:'Salles de bain',area:'Surface',loading:'Photo',building:'Création du PDF…',done:'✓ Terminé!'},
+    }[lang];
+
+    // Load images
+    setP(2, lang==='en'?'Connecting to image proxy…':lang==='fr'?'Connexion au proxy d\'images…':'Verbinde mit Bild-Proxy…');
+    await tick(200);
+
+    const b64s = [];
+    for(let i = 0; i < ids.length; i++){
+      setP(2 + Math.round((i / ids.length) * 58), `${L.loading} ${i+1} / ${ids.length}…`);
+      b64s.push(await loadViaProxy(ids[i]));
+      await tick(10);
+    }
+
+    const valid = b64s.map((b,i) => ({b,i})).filter(x => x.b);
+    const failed = ids.length - valid.length;
+
+    setP(62, `${valid.length} ${lang==='en'?'images loaded':'lang'==='fr'?'images chargées':'Bilder geladen'} — ${L.building}`);
+    await tick(100);
+
+    if(valid.length === 0){
+      throw new Error(lang==='en'?'No images could be loaded. Please check your internet connection.':lang==='fr'?'Aucune image n\'a pu être chargée.':'Kein Bild konnte geladen werden. Bitte Internetverbindung prüfen.');
+    }
+
+    // Build PDF
+    const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const W=210, H=297, M=18, CW=W-M*2;
+
+    // Cover
+    doc.addImage(valid[0].b,'JPEG',0,0,W,118,undefined,'FAST');
+    doc.setFillColor(8,6,3); doc.setGState(doc.GState({opacity:.40}));
+    doc.rect(0,74,W,44,'F'); doc.setGState(doc.GState({opacity:1}));
+
+    doc.setTextColor(255,255,255); doc.setFont('times','normal'); doc.setFontSize(26);
+    doc.text(d.name, M, 106);
+    doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(215,200,180);
+    doc.text(t.location, M, 114);
+
+    let y=132; pL(doc,M,y-3,W-M);
+
+    [[L.persons,d.specs.persons],[L.beds,d.specs.bedrooms],[L.baths,d.specs.bathrooms],[L.area,d.specs.size]]
+    .forEach(([k,v],i)=>{
+      const cx=M+i*(CW/4)+CW/8;
+      doc.setTextColor(44,36,22); doc.setFont('times','normal'); doc.setFontSize(19);
+      doc.text(String(v),cx,y+6,{align:'center'});
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(155,144,130);
+      doc.text(k.toUpperCase(),cx,y+13,{align:'center'});
+    });
+    pL(doc,M,y+17,W-M); y+=27;
+
+    // Short desc — use standard quotes for EN/FR
+    doc.setFont('times','italic'); doc.setFontSize(11); doc.setTextColor(80,65,45);
+    const quote = lang==='de' ? `„${t.shortDesc}"` : `"${t.shortDesc}"`;
+    const sdL=doc.splitTextToSize(quote, CW);
+    doc.text(sdL,M,y); y+=sdL.length*6.2+10;
+
+    if(showD && t.distances){
+      pSH(doc,L.dist,M,y,CW); y+=10;
+      Object.entries(t.distances).forEach(([k,v],i)=>{
+        const col=i%3,row=Math.floor(i/3),dx=M+col*(CW/3),dy=y+row*7;
+        doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(44,36,22);
+        doc.text(k+': ',dx,dy);
+        doc.setFont('helvetica','normal'); doc.setTextColor(80,65,45);
+        doc.text(String(v),dx+doc.getTextWidth(k+': '),dy);
+      });
+      y+=Math.ceil(Object.keys(t.distances).length/3)*7+10;
+    }
+
+    if(note){
+      doc.setFillColor(248,244,238); doc.rect(M,y,CW,10,'F');
+      doc.setFont('helvetica','italic'); doc.setFontSize(8.5); doc.setTextColor(120,100,70);
+      doc.text(note,M+4,y+7.5); y+=16;
+    }
+
+    setP(68, L.building);
+
+    // Description page
+    doc.addPage(); y=M+8;
+    pSH(doc,L.desc,M,y,CW); y+=11;
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(60,50,36);
+    const dL=doc.splitTextToSize(t.description,CW);
+    const lpp=Math.floor((H-y-M)/5.4);
+    let li=0,lb=[];
+    while(li<dL.length){
+      lb=dL.slice(li,li+lpp); doc.text(lb,M,y); li+=lpp;
+      if(li<dL.length){doc.addPage();y=M+8;}else{y+=lb.length*5.4+14;}
+    }
+
+    if(y>H-70){doc.addPage();y=M+8;}
+    pSH(doc,L.amen,M,y,CW); y+=11;
+    t.amenities.forEach((a,i)=>{
+      const col=i%3,row=Math.floor(i/3);
+      if(row>0&&col===0&&y+row*6.5>H-M){doc.addPage();y=M+8;}
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(80,68,50);
+      doc.text('— '+a,M+col*(CW/3),y+row*6.5);
+    });
+
+    setP(76, lang==='en'?'Inserting photos…':lang==='fr'?'Insertion des photos…':'Fotos einfügen…');
+
+    // Photo pages — 2 per page
+    for(let pi=0;pi<valid.length;pi+=2){
+      doc.addPage();
+      const pH=(H-M*2-4)/2;
+      valid.slice(pi,pi+2).forEach(({b},bi)=>{
+        doc.addImage(b,'JPEG',M,M+bi*(pH+4),CW,pH,undefined,'FAST');
+      });
+      setP(76+Math.round((pi/valid.length)*20),`${L.loading}s ${Math.min(pi+2,valid.length)}/${valid.length}`);
+      await tick(10);
+    }
+
+    setP(98, lang==='en'?'Finalising…':lang==='fr'?'Finalisation…':'Finalisieren…');
+
+    // Footer
+    const tot=doc.internal.getNumberOfPages();
+    for(let p=1;p<=tot;p++){
+      doc.setPage(p); pL(doc,M,H-12,W-M);
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(180,170,155);
+      doc.text(d.name+' · '+t.location,M,H-6);
+      doc.text(p+' / '+tot,W-M,H-6,{align:'right'});
+    }
+
+    setP(100, L.done);
+    doc.save(d.name.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'')+'_Expose.pdf');
+
+    if(failed > 0){
+      const warnMsg = lang==='en'
+        ? `${failed} images could not be loaded — ${valid.length} images included in PDF.`
+        : lang==='fr'
+        ? `${failed} images n'ont pas pu être chargées — ${valid.length} images dans le PDF.`
+        : `${failed} Bilder konnten nicht geladen werden — ${valid.length} Bilder im PDF enthalten.`;
+      showMsg('warn', warnMsg);
+    }
+
+  } catch(e){
+    showMsg('warn','Error: '+e.message);
+  } finally {
+    setTimeout(()=>{pw.classList.remove('on');btn.disabled=false;},2500);
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────
+function pL(doc,x1,y,x2){
+  doc.setDrawColor(200,168,130); doc.setLineWidth(.35); doc.line(x1,y,x2,y);
+}
+function pSH(doc,label,x,y,w){
+  pL(doc,x,y+3,x+16);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(155,144,130);
+  doc.text(label.toUpperCase(),x+20,y+5);
+  pL(doc,x+20+doc.getTextWidth(label.toUpperCase())+4,y+3,x+w);
+}
+function showMsg(type, msg){
+  const b = document.getElementById(type==='warn'?'warnBox':'infoBox');
+  b.textContent = msg; b.classList.add('on');
+}
+function tick(ms=100){ return new Promise(r=>setTimeout(r,ms)); }
+</script>
+</body>
+</html>
